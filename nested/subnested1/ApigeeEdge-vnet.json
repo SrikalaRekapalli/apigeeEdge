@@ -85,10 +85,14 @@
     "variables": {},
     "resources": [
         {
+            "comments": "Virtual Network and Subnet Resource",
             "apiVersion": "[parameters('networkApiVersion')]",
             "type": "Microsoft.Network/virtualNetworks",
             "name": "[parameters('vnetName')]",
             "location": "[parameters('location')]",
+            "tags": {
+                "[parameters('tag').key1]": "[parameters('tag').value1]"
+            },
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
