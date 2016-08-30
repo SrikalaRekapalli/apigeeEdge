@@ -90,9 +90,6 @@
                 "[parameters('tag').key1]": "[parameters('tag').value1]"
             },
             "properties": {
-                "subnet": {
-                    "id": "[parameters('subnetRef')]"
-                },
                 "ipConfigurations": [
                     {
                         "name": "[parameters('ipConfigName')]",
