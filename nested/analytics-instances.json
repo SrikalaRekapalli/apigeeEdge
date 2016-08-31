@@ -1,0 +1,192 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "metadata": {
+                "description": "Deployment location of where Apigee will be installed"
+            }
+        },
+        "vmDnsName": {
+            "type": "string",
+            "defaultValue": "apigeeedgetrial"
+        },
+        "vmtypeprefix": {
+            "type": "string",
+            "defaultValue": "multinode"
+        },
+        "adminUserName": {
+            "type": "string",
+            "defaultValue": "apigeetrial"
+        },
+        "machineSettings": {
+            "type": "object"
+        },
+        "sshKey": {
+            "type": "securestring"
+        },
+        "storageAccountName": {
+            "type": "string"
+        },
+        "tag": {
+            "type": "object",
+            "defaultValue": {
+                "value1": "ApigeeEdge"
+            }
+        }
+    },
+    "variables": {
+        "imagePublisher": "apigee",
+        "imageOffer": "apigee-edge",
+        "imageSKU": "apigee-edge-4-15-07",
+        "imageVersion": "latest",
+        "vmSize": "[parameters('machineSettings').vmSize]",
+        "ipConfigName": "ipconfig1",
+        "networkApiVersion": "2015-06-15",
+        "computeApiVersion": "2015-06-15",
+        "networkInterfacesName": "[concat(variables('nicName'), parameters('vmtypeprefix'))]",
+        "armComponentUrl": "https://raw.githubusercontent.com/SrikalaRekapalli/apigeeEdge/master/nested/subnested1/",
+        "virtualMachineResourceUrl": "[concat(variables('armComponentUrl'),'ApigeeEdge-vms-with-1datadisk.json')]",
+        "networkInterfacesResourceUrl": "[concat(variables('armComponentUrl'),'ApigeeEdge-nic.json')]",
+        "nicName": "[concat('ApigeeVMNic-',parameters('vmDnsName'))]",
+        "addressPrefix": "10.0.0.0/16",
+        "subnet1Name": "Subnet-1",
+        "subnet1Prefix": "10.0.0.0/24",
+        "publicIPAddressName": "[concat('ApigeePublicIP-',parameters('vmDnsName'))]",
+        "publicIPAddressType": "Dynamic",
+        "vmStorageAccountContainerName": "vhds",
+        "vmName": "[parameters('vmDnsName')]",
+        "virtualNetworkName": "[concat('ApigeeVNET-',parameters('vmDnsName'))]",
+        "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+        "storageAccountType": "Standard_LRS",
+        "subnet1Ref": "[concat(variables('vnetID'),'/subnets/',variables('subnet1Name'))]",
+        "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]",
+        "vmCount": "[parameters('machineSettings').vmCount]",
+        "sshKeyPath": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]"
+    },
+    "resources": [
+        {
+            "name": "networkInterfacesResource",
+            "apiVersion": "2015-01-01",
+            "type": "Microsoft.Resources/deployments",
+            "dependsOn": [
+                "publicIPResource",
+                "networkSecurityGroupResource",
+                "virtualNetworkResource"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('networkInterfacesResourceUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "networkInterfaceName": {
+                        "value": "[variables('networkInterfacesName')]"
+                    },
+                    "count": {
+                        "value": "[variables('vmCount')]"
+                    },
+                    "subnetRef": {
+                        "value": "[variables('subnet1Ref')]"
+                    },
+                    "networkApiVersion": {
+                        "value": "[variables('networkApiVersion')]"
+                    },
+                    "ipConfigName": {
+                        "value": "[variables('ipConfigName')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "networkInterfaces",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "virtualMachineResource",
+            "apiVersion": "2015-01-01",
+            "type": "Microsoft.Resources/deployments",
+            "dependsOn": [
+                "storageAccountResource",
+                "networkInterfacesResource"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('virtualMachineResourceUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "vmName": {
+                        "value": "[variables('vmName')]"
+                    },
+                    "vmSize": {
+                        "value": "[variables('vmSize')]"
+                    },
+                    "vmStorageAccountContainerName": {
+                        "value": "[variables('vmStorageAccountContainerName')]"
+                    },
+                    "adminUsername": {
+                        "value": "[parameters('AdminUsername')]"
+                    },
+                    "adminPasswordOrSshKey": {
+                        "value": "[parameters('sshKey')]"
+                    },
+                    "imagePublisher": {
+                        "value": "[variables('imagePublisher')]"
+                    },
+                    "imageOffer": {
+                        "value": "[variables('imageOffer')]"
+                    },
+                    "imageSKU": {
+                        "value": "[variables('imageSKU')]"
+                    },
+                    "imageVersion": {
+                        "value": "[variables('imageVersion')]"
+                    },
+                    "count": {
+                        "value": "[variables('vmCount')]"
+                    },
+                    "storageAccountName": {
+                        "value": "[parameters('storageAccountName')]"
+                    },
+                    "computeApiVersion": {
+                        "value": "[variables('computeApiVersion')]"
+                    },
+                    "vmtypeprefix": {
+                        "value": "[parameters('vmtypeprefix')]"
+                    },
+                    "networkInterfaceName": {
+                        "value": "[variables('nicName')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "virtualmachine",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "ip1": {
+            "value": "[reference(concat(variables('nicName'), parameters('vmtypeprefix'), 0)).ipConfigurations[0].properties.privateIPAddress]",
+            "type": "string"
+        },
+        "ip2": {
+            "value": "[reference(concat(variables('nicName'), parameters('vmtypeprefix'), 1)).ipConfigurations[0].properties.privateIPAddress]",
+            "type": "string"
+        }
+    }
+}
