@@ -1,0 +1,318 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "type": "string",
+            "metadata": {
+                "description": "Deployment location of where Apigee will be installed"
+            }
+        },
+        "vmDnsName": {
+            "type": "string"
+        },
+        "tag": {
+            "type": "object",
+            "defaultValue": {
+                "value1": "apigeeEdge"
+            }
+        },
+        "vmtypeprefix": {
+            "type": "string",
+            "defaultValue": "rmp"
+        },
+        "adminUserName": {
+            "type": "string",
+            "defaultValue": "apigeetrial"
+        },
+        "machineSettings": {
+            "type": "object"
+        },
+        "sshKey": {
+            "type": "securestring"
+        },
+        "storageAccountName": {
+            "type": "string"
+        }
+    },
+    "variables": {
+        "networkApiVersion": "2015-06-15",
+        "availabilitySets-api-version": "2015-06-15",
+        "loadBalancersApiVersion": "2015-06-15",
+        "computeApiVersion": "2015-06-15",
+        "runtimePublicIPAddressName": "[concat('ApigeeRuntimePublicIP-',parameters('vmDnsName'))]",
+        "vmName": "[parameters('vmDnsName')]",
+        "runtimePublicIPDNSName": "[concat(parameters('vmDnsName'), uniqueString(resourceGroup().id, deployment().name), '-runtime')]",
+        "lbName": "[concat('ApigeeLB-',parameters('vmDnsName'))]",
+        "publicIPAddressType": "Dynamic",
+        "runtimePublic IPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',variables('runtimePublicIPAddressName'))]",
+        "lbPoolID": "[concat(variables('lbID'),'/backendAddressPools/RMPInstancePool')]",
+        "lbProbeID": "[concat(variables('lbID'),'/probes/tcpProbe')]",
+        "lbID": "[resourceId('Microsoft.Network/loadBalancers',variables('lbName'))]",
+        "frontEndIPConfigID": "[concat(variables('lbID'),'/frontendIPConfigurations/LoadBalancerFrontEnd')]",
+        "availabilitySetName": "[concat('ApigeeRMPSet-',parameters('vmDnsName'))]",
+        "networkInterfaceName": "[concat(variables('nicName'), parameters('vmtypeprefix'))]",
+        "nicName": "[concat('ApigeeVMNic-',parameters('vmDnsName'))]",
+        "subnet1Ref": "[concat(variables('vnetID'),'/subnets/',variables('subnet1Name'))]",
+        "subnet1Name": "Subnet-1",
+        "securityGroupName": "[concat('ApigeeSecurityGroup-',parameters('vmDnsName'))]",
+        "loadBalancerBkpoolRef": "[concat(variables('lbID'), '/backendAddressPools/RMPInstancePool')]",
+        "imagePublisher": "apigee",
+        "imageOffer": "apigee-edge",
+        "imageSku": "apigee-edge-4-15-07",
+        "imageVersion": "latest",
+        "addressPrefix": "10.0.0.0/16",
+        "subnet1Prefix": "10.0.0.0/24",
+        "publicIPAddressName": "[concat('ApigeeManagementPublicIP-',parameters('vmDnsName'))]",
+        "publicIPDNSName": "[concat(parameters('vmDnsName'), '-management')]",
+        "managementPublicIPDNSName": "[concat(parameters('vmDnsName'), uniqueString(resourceGroup().id, deployment().name), '-management')]",
+        "vmStorageAccountContainerName": "vhds",
+        "virtualNetworkName": "[concat('ApigeeVNET-',parameters('vmDnsName'))]",
+        "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+        "storageAccountType": "Standard_LRS",
+        "publicIPAddressID": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]",
+        "vmCount": "[parameters('machineSettings').vmCount]",
+        "sshKeyPath": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]",
+        "publicIPResourceUrl": "[concat(variables('armBaseURL'),'staging/public-ip/public-ip.json?token=AT3nZs2IF1JOSx0oAJ5HiIeBYcSDvnvNks5Xz-POwA%3D%3D')]",
+        "availabiltySetDeployUrl": "[concat(variables('armBaseURL'),'staging/availability-sets/availability-set.json?token=AT3nZj3N62o2BdJMGCyZH9FnvA2nJOgJks5Xz-RkwA%3D%3D')]",
+        "loadBalancersDeployUrl": "[concat(variables('armComponentURL'),'apigee-rmp-lb.json')]",
+        "networkInterfaceDeployUrl": "[concat(variables('armComponentURL'),'apigee-rmp-nic-without-nat-dynamic.json')]",
+        "virtualmachineurl": "[concat(variables('armComponentURL'),'ApigeeEdge-vms.json')]",
+        "armBaseURL": "https://raw.githubusercontent.com/sysgain/arm-base/",
+        "armComponentURL": "https://raw.githubusercontent.com/SrikalaRekapalli/apigeeEdge/master/nested/subnested1/"
+    },
+    "resources": [
+        {
+            "apiVersion": "2015-01-01",
+            "name": "publicIPResource",
+            "type": "Microsoft.Resources/deployments",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('publicIPResourceUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "publicIPAddressName": {
+                        "value": "[variables('runtimePublicIPAddressName')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "networkApiVersion": {
+                        "value": "[variables('networkApiVersion')]"
+                    },
+                    "publicIPdnsPrefix": {
+                        "value": "[variables('runtimePublicIPDNSName')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "Public IP",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "2015-01-01",
+            "name": "availabiltySetDeploy",
+            "type": "Microsoft.Resources/deployments",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('availabiltySetDeployUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "availabilitySetName": {
+                        "value": "[variables('availabilitySetName')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "availabilitySetsApiVersion": {
+                        "value": "[variables('availabilitySets-api-version')]"
+                    },
+                    "vmDnsName": {
+                        "value": "[variables('vmName')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "Availability Set",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "2015-01-01",
+            "name": "loadBalancersDeploy",
+            "type": "Microsoft.Resources/deployments",
+            "dependsOn": [
+                "publicIPResource"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('loadBalancersDeployUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "loadBalancersApiVersion": {
+                        "value": "[variables('loadBalancersApiVersion')]"
+                    },
+                    "loadBalancersName": {
+                        "value": "[variables('lbName')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "publicIPAddressName": {
+                        "value": "[variables('runtimePublicIPAddressName')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "Load Balancer",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "2015-01-01",
+            "type": "Microsoft.Resources/deployments",
+            "name": "networkInterfaceDeploy",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "loadBalancersDeploy"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('networkInterfaceDeployUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "networkApiVersion": {
+                        "value": "[variables('networkApiVersion')]"
+                    },
+                    "networkInterfaceName": {
+                        "value": "[variables('networkInterfaceName')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "loadBalancersName": {
+                        "value": "[variables('lbName')]"
+                    },
+                    "count": {
+                        "value": "[variables('vmCount')]"
+                    },
+                    "subnetRef": {
+                        "value": "[variables('subnet1Ref')]"
+                    },
+                    "networkSecurityGroupName": {
+                        "value": "[variables('securityGroupName')]"
+                    },
+                    "loadBalancerBkpoolRef": {
+                        "value": "[variables('loadBalancerBkpoolRef')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "Network Interface Card",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "2015-01-01",
+            "type": "Microsoft.Resources/deployments",
+            "name": "[concat(variables('vmName'), parameters('vmtypeprefix'), copyindex())]",
+            "dependsOn": [
+                "networkInterfaceDeploy",
+                "availabiltySetDeploy",
+                "publicIPResource"
+            ],
+            "copy": {
+                "name": "vmCopyLoop",
+                "count": "[variables('vmCount')]"
+            },
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('virtualmachineurl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "computeApiVersion": {
+                        "value": "[variables('computeApiVersion')]"
+                    },
+                    "vmName": {
+                        "value": "[variables('vmName')]"
+                    },
+                    "vmSize": {
+                        "value": "[parameters('machineSettings').vmSize]"
+                    },
+                    "adminUsername": {
+                        "value": "[parameters('adminUsername')]"
+                    },
+                    "adminPasswordOrSshKey": {
+                        "value": "[parameters('sshkey')]"
+                    },
+                    "imagePublisher": {
+                        "value": "[variables('imagePublisher')]"
+                    },
+                    "imageOffer": {
+                        "value": "[variables('imageOffer')]"
+                    },
+                    "imageSKU": {
+                        "value": "[variables('imageSKU')]"
+                    },
+                    "imageVersion": {
+                        "value": "[variables('imageVersion')]"
+                    },
+                    "storageAccountName": {
+                        "value": "[parameters('storageAccountName')]"
+                    },
+                    "vmStorageAccountContainerName": {
+                        "value": "[variables('vmStorageAccountContainerName')]"
+                    },
+                    "networkInterfaceName": {
+                        "value": "[variables('networkInterfaceName')]"
+                    },
+                    "count": {
+                        "value": "[variables('vmCount')]"
+                    },
+                    "vmtypeprefix": {
+                        "value": "[parameters('vmtypeprefix')]"
+                    },
+                    "tag": {
+                        "value": {
+                            "key1": "virtual machine",
+                            "value1": "[parameters('tag').value1]"
+                        }
+                    }
+                }
+            },
+            "outputs": {
+                "ip1": {
+                    "value": "[reference(concat(variables('nicName'), parameters('vmtypeprefix'), 0)).ipConfigurations[0].properties.privateIPAddress]",
+                    "type": "string"
+                },
+                "ip2": {
+                    "value": "[reference(concat(variables('nicName'), parameters('vmtypeprefix'), 1)).ipConfigurations[0].properties.privateIPAddress]",
+                    "type": "string"
+                },
+                "runtimePublicDNSName": {
+                    "value": "[reference(variables('runtimePublicIPAddressName')).dnsSettings.fqdn]",
+                    "type": "string"
+                }
+            }
+        }
+    ]
+}
