@@ -147,7 +147,7 @@
             "comments": "Virtual Machine with 8 data disks",
             "apiVersion": "[parameters('computeApiVersion')]",
             "type": "Microsoft.Compute/virtualMachines",
-            "name": "[concat(parameters('vmName'), copyIndex())]",
+            "name": "[concat(parameters('vmName'),parameters('vmtypeprefix'), copyIndex())]",
             "location": "[parameters('location')]",
             "tags": {
                 "[parameters('tag').key1]": "[parameters('tag').value1]"
