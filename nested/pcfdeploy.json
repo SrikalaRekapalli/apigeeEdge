@@ -404,7 +404,7 @@
       },
       "resources": [
         {
-          "name": "AllWindowsAzureIps",
+          "name": "sqlResources",
           "type": "firewallrules",
           "location": "[resourceGroup().location]",
           "apiVersion": "2014-04-01-preview",
